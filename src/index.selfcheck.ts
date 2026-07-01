@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { isNewRelease, parseLatestRelease, parseRepositories } from "./index.ts";
+import { formatDiscordNotification, isNewRelease, parseLatestRelease, parseRepositories } from "./index.ts";
 
 const repos = parseRepositories('["https://github.com/cloudflare/workers-sdk", "https://github.com/cloudflare/workers-sdk/"]');
 assert.deepEqual(repos, [
@@ -33,5 +33,29 @@ assert.deepEqual(latest, {
 assert.equal(isNewRelease(null, latest), false);
 assert.equal(isNewRelease({ id: "old", publishedAt: "2026-01-01T00:00:00Z" }, latest), true);
 assert.equal(isNewRelease({ id: latest.id, publishedAt: "2026-01-01T00:00:00Z" }, latest), false);
+const formatted = formatDiscordNotification(
+  repos[0],
+  latest,
+  "- Sửa lỗi quan trọng\n- Cải thiện hiệu năng"
+);
+assert.equal(
+  formatted,
+  [
+    "## cloudflare/workers-sdk",
+    "Phiên bản: [**v1.2.3**](https://github.com/cloudflare/workers-sdk/releases/tag/v1.2.3)",
+    "",
+    "**Tóm tắt**",
+    "- Sửa lỗi quan trọng\n- Cải thiện hiệu năng",
+  ].join("\n")
+);
+
+const truncated = formatDiscordNotification(repos[0], latest, "A".repeat(4000));
+assert.equal(truncated.length <= 2000, true);
+assert.equal(
+  truncated.startsWith(
+    "## cloudflare/workers-sdk\nPhiên bản: [**v1.2.3**](https://github.com/cloudflare/workers-sdk/releases/tag/v1.2.3)\n\n**Tóm tắt**\n"
+  ),
+  true
+);
 
 console.log("selfcheck ok");

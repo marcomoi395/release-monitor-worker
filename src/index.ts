@@ -1,5 +1,11 @@
 type RepositoryConfig = { owner: string; repo: string; url: string };
-type ReleaseEntry = { id: string; publishedAt: string; title: string; url: string; content: string };
+type ReleaseEntry = {
+  id: string;
+  publishedAt: string;
+  title: string;
+  url: string;
+  content: string;
+};
 type StoredReleaseState = { id: string; publishedAt: string };
 
 interface Env {
@@ -18,17 +24,45 @@ const GITHUB_FEED_HEADERS = {
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 const DISCORD_LIMIT = 2000;
 
+export function formatDiscordNotification(
+  repo: RepositoryConfig,
+  release: ReleaseEntry,
+  summary: string,
+): string {
+  const normalizedSummary = summary
+    .trim()
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n");
+  const header = [
+    `## ${repo.owner}/${repo.repo}`,
+    `Phiên bản: [**${release.title}**](${release.url})`,
+    "",
+    "**Tóm tắt**",
+  ].join("\n");
+  const summaryLimit = DISCORD_LIMIT - header.length - 1;
+  const fittedSummary =
+    normalizedSummary.length <= summaryLimit
+      ? normalizedSummary
+      : `${normalizedSummary.slice(0, Math.max(0, summaryLimit - 1)).trimEnd()}…`;
+
+  return `${header}\n${fittedSummary}`;
+}
+
 export function parseRepositories(raw: string): RepositoryConfig[] {
   let parsed: unknown;
 
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error("REPOSITORIES must be a JSON array of GitHub repository URLs");
+    throw new Error(
+      "REPOSITORIES must be a JSON array of GitHub repository URLs",
+    );
   }
 
   if (!Array.isArray(parsed)) {
-    throw new Error("REPOSITORIES must be a JSON array of GitHub repository URLs");
+    throw new Error(
+      "REPOSITORIES must be a JSON array of GitHub repository URLs",
+    );
   }
 
   const seen = new Set<string>();
@@ -36,7 +70,9 @@ export function parseRepositories(raw: string): RepositoryConfig[] {
 
   for (const item of parsed) {
     if (typeof item !== "string") {
-      throw new Error("REPOSITORIES must be a JSON array of GitHub repository URLs");
+      throw new Error(
+        "REPOSITORIES must be a JSON array of GitHub repository URLs",
+      );
     }
 
     let url: URL;
@@ -44,16 +80,22 @@ export function parseRepositories(raw: string): RepositoryConfig[] {
     try {
       url = new URL(item);
     } catch {
-      throw new Error("REPOSITORIES must be a JSON array of GitHub repository URLs");
+      throw new Error(
+        "REPOSITORIES must be a JSON array of GitHub repository URLs",
+      );
     }
 
     if (url.hostname !== "github.com") {
-      throw new Error("REPOSITORIES must be a JSON array of GitHub repository URLs");
+      throw new Error(
+        "REPOSITORIES must be a JSON array of GitHub repository URLs",
+      );
     }
 
     const segments = url.pathname.replace(/^\/+|\/+$/g, "").split("/");
     if (segments.length !== 2 || !segments[0] || !segments[1]) {
-      throw new Error("REPOSITORIES must be a JSON array of GitHub repository URLs");
+      throw new Error(
+        "REPOSITORIES must be a JSON array of GitHub repository URLs",
+      );
     }
 
     const owner = segments[0];
@@ -82,7 +124,7 @@ export function parseLatestRelease(xml: string): ReleaseEntry | null {
   const title = extractTag(entry, "title");
   const content = extractTag(entry, "content");
   const link = entry.match(/<link\b[^>]*\brel="alternate"[^>]*>/i)?.[0];
-  const url = link ? link.match(/\bhref="([^"]+)"/i)?.[1] ?? null : null;
+  const url = link ? (link.match(/\bhref="([^"]+)"/i)?.[1] ?? null) : null;
 
   if (!id || !publishedAt || !title || !content || !url) {
     return null;
@@ -97,7 +139,10 @@ export function parseLatestRelease(xml: string): ReleaseEntry | null {
   };
 }
 
-export function isNewRelease(stored: StoredReleaseState | null, latest: ReleaseEntry): boolean {
+export function isNewRelease(
+  stored: StoredReleaseState | null,
+  latest: ReleaseEntry,
+): boolean {
   if (!stored) {
     return false;
   }
@@ -122,16 +167,25 @@ async function runMonitor(env: Env): Promise<void> {
       await monitorRepository(env, repo);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`Monitor failed for ${repo.owner}/${repo.repo}: ${message}`);
+      console.error(
+        `Monitor failed for ${repo.owner}/${repo.repo}: ${message}`,
+      );
     }
   }
 }
 
-async function monitorRepository(env: Env, repo: RepositoryConfig): Promise<void> {
-  const response = await globalThis.fetch(`${repo.url}/releases.atom`, { headers: GITHUB_FEED_HEADERS });
+async function monitorRepository(
+  env: Env,
+  repo: RepositoryConfig,
+): Promise<void> {
+  const response = await globalThis.fetch(`${repo.url}/releases.atom`, {
+    headers: GITHUB_FEED_HEADERS,
+  });
 
   if (!response.ok) {
-    throw new Error(`GitHub feed fetch failed for ${repo.owner}/${repo.repo}: ${response.status}`);
+    throw new Error(
+      `GitHub feed fetch failed for ${repo.owner}/${repo.repo}: ${response.status}`,
+    );
   }
 
   const xml = await response.text();
@@ -151,7 +205,10 @@ async function monitorRepository(env: Env, repo: RepositoryConfig): Promise<void
   const rawState = await env.KV.get(key);
 
   if (rawState === null) {
-    await env.KV.put(key, JSON.stringify({ id: latest.id, publishedAt: latest.publishedAt }));
+    await env.KV.put(
+      key,
+      JSON.stringify({ id: latest.id, publishedAt: latest.publishedAt }),
+    );
     return;
   }
 
@@ -164,8 +221,13 @@ async function monitorRepository(env: Env, repo: RepositoryConfig): Promise<void
     }
     stored = parsed;
   } catch {
-    console.log(`Stored release state is invalid for ${repo.owner}/${repo.repo}; replacing baseline`);
-    await env.KV.put(key, JSON.stringify({ id: latest.id, publishedAt: latest.publishedAt }));
+    console.log(
+      `Stored release state is invalid for ${repo.owner}/${repo.repo}; replacing baseline`,
+    );
+    await env.KV.put(
+      key,
+      JSON.stringify({ id: latest.id, publishedAt: latest.publishedAt }),
+    );
     return;
   }
 
@@ -175,10 +237,17 @@ async function monitorRepository(env: Env, repo: RepositoryConfig): Promise<void
 
   const summary = await summarizeRelease(env, repo, latest);
   await sendDiscordNotification(env, repo, latest, summary);
-  await env.KV.put(key, JSON.stringify({ id: latest.id, publishedAt: latest.publishedAt }));
+  await env.KV.put(
+    key,
+    JSON.stringify({ id: latest.id, publishedAt: latest.publishedAt }),
+  );
 }
 
-async function summarizeRelease(env: Env, repo: RepositoryConfig, release: ReleaseEntry): Promise<string> {
+async function summarizeRelease(
+  env: Env,
+  repo: RepositoryConfig,
+  release: ReleaseEntry,
+): Promise<string> {
   const response = await globalThis.fetch(OPENAI_URL, {
     method: "POST",
     headers: {
@@ -203,7 +272,9 @@ async function summarizeRelease(env: Env, repo: RepositoryConfig, release: Relea
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI summary failed: ${response.status} ${await responseSnippet(response)}`);
+    throw new Error(
+      `OpenAI summary failed: ${response.status} ${await responseSnippet(response)}`,
+    );
   }
 
   const data: unknown = await response.json();
@@ -216,8 +287,13 @@ async function summarizeRelease(env: Env, repo: RepositoryConfig, release: Relea
   return summary.trim();
 }
 
-async function sendDiscordNotification(env: Env, repo: RepositoryConfig, release: ReleaseEntry, summary: string): Promise<void> {
-  const content = `**${repo.owner}/${repo.repo}** có release mới: **${release.title}**\n${summary}\n${release.url}`.slice(0, DISCORD_LIMIT);
+async function sendDiscordNotification(
+  env: Env,
+  repo: RepositoryConfig,
+  release: ReleaseEntry,
+  summary: string,
+): Promise<void> {
+  const content = formatDiscordNotification(repo, release, summary);
   const response = await globalThis.fetch(env.DISCORD_WEBHOOK_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -229,7 +305,9 @@ async function sendDiscordNotification(env: Env, repo: RepositoryConfig, release
   });
 
   if (!response.ok && response.status !== 204) {
-    throw new Error(`Discord webhook failed: ${response.status} ${await responseSnippet(response)}`);
+    throw new Error(
+      `Discord webhook failed: ${response.status} ${await responseSnippet(response)}`,
+    );
   }
 }
 
@@ -238,31 +316,39 @@ async function responseSnippet(response: Response): Promise<string> {
 }
 
 function extractTag(xml: string, tag: string): string | null {
-  return xml.match(new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\/${tag}>`, "i"))?.[1] ?? null;
+  return (
+    xml.match(new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\/${tag}>`, "i"))?.[1] ??
+    null
+  );
 }
 
 function decodeXmlEntities(value: string): string {
-  return value.replace(/&(?:lt|gt|amp|quot|#39|#x[0-9a-fA-F]+|#[0-9]+);/g, (entity) => {
-    switch (entity) {
-      case "&lt;":
-        return "<";
-      case "&gt;":
-        return ">";
-      case "&amp;":
-        return "&";
-      case "&quot;":
-        return '"';
-      case "&#39;":
-        return "'";
-      default: {
-        if (entity.startsWith("&#x")) {
-          return String.fromCodePoint(Number.parseInt(entity.slice(3, -1), 16));
-        }
+  return value.replace(
+    /&(?:lt|gt|amp|quot|#39|#x[0-9a-fA-F]+|#[0-9]+);/g,
+    (entity) => {
+      switch (entity) {
+        case "&lt;":
+          return "<";
+        case "&gt;":
+          return ">";
+        case "&amp;":
+          return "&";
+        case "&quot;":
+          return '"';
+        case "&#39;":
+          return "'";
+        default: {
+          if (entity.startsWith("&#x")) {
+            return String.fromCodePoint(
+              Number.parseInt(entity.slice(3, -1), 16),
+            );
+          }
 
-        return String.fromCodePoint(Number.parseInt(entity.slice(2, -1), 10));
+          return String.fromCodePoint(Number.parseInt(entity.slice(2, -1), 10));
+        }
       }
-    }
-  });
+    },
+  );
 }
 
 function htmlToPlainText(html: string): string {
@@ -301,7 +387,11 @@ function collectResponseText(data: unknown): string {
     }
 
     for (const content of item.content) {
-      if (isRecord(content) && content.type === "output_text" && typeof content.text === "string") {
+      if (
+        isRecord(content) &&
+        content.type === "output_text" &&
+        typeof content.text === "string"
+      ) {
         chunks.push(content.text);
       }
     }
@@ -318,11 +408,19 @@ function isStoredReleaseState(value: unknown): value is StoredReleaseState {
   );
 }
 
-export async function scheduled(_controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+export async function scheduled(
+  _controller: ScheduledController,
+  env: Env,
+  _ctx: ExecutionContext,
+): Promise<void> {
   await runMonitor(env);
 }
 
-export async function fetch(_request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {
+export async function fetch(
+  _request: Request,
+  _env: Env,
+  _ctx: ExecutionContext,
+): Promise<Response> {
   return new Response("release-monitor-worker ready");
 }
 
