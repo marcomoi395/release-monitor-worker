@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { formatDiscordNotification, isNewRelease, parseLatestRelease, parseRepositories } from "./index.ts";
+import { fetch as workerFetch } from "./index.ts";
 
 const repos = parseRepositories('["https://github.com/cloudflare/workers-sdk", "https://github.com/cloudflare/workers-sdk/"]');
 assert.deepEqual(repos, [
@@ -57,5 +58,20 @@ assert.equal(
   ),
   true
 );
+
+const runResponse = await workerFetch(
+  new Request("https://example.com/run"),
+  {
+    KV: {} as KVNamespace,
+    REPOSITORIES: "[]",
+    OPENAI_MODEL: "gpt-5.4-nano",
+    OPENAI_API_KEY: "test-key",
+    DISCORD_WEBHOOK_URL: "https://discord.invalid/webhook",
+  },
+  {} as ExecutionContext,
+);
+
+assert.equal(runResponse.status, 200);
+assert.equal(await runResponse.text(), "monitor run complete");
 
 console.log("selfcheck ok");

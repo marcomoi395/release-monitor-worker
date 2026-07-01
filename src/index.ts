@@ -417,10 +417,17 @@ export async function scheduled(
 }
 
 export async function fetch(
-  _request: Request,
-  _env: Env,
+  request: Request,
+  env: Env,
   _ctx: ExecutionContext,
 ): Promise<Response> {
+  const url = new URL(request.url);
+
+  if (request.method === "GET" && url.pathname === "/run") {
+    await runMonitor(env);
+    return new Response("monitor run complete");
+  }
+
   return new Response("release-monitor-worker ready");
 }
 
