@@ -8,8 +8,8 @@
     { "binding": "KV", "id": "e530e2ff3bb944beb2d4b83e36371d86" },
   ],
   "vars": {
-    "REPOSITORIES": "[]",
-    "OPENAI_MODEL": "gpt-4.1-mini",
+    // "REPOSITORIES": "[]",
+    "OPENAI_MODEL": "gpt-5.4-nano",
   },
   "triggers": {
     "crons": ["0 * * * *"],
