@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "selfcheck": "node --experimental-strip-types src/index.selfcheck.ts",
     "dev": "wrangler dev --test-scheduled",
     "deploy": "wrangler deploy"
   },

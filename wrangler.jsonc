@@ -4,11 +4,18 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-01",
   "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [
+    { "binding": "KV", "id": "e530e2ff3bb944beb2d4b83e36371d86" },
+  ],
+  "vars": {
+    "REPOSITORIES": "[]",
+    "OPENAI_MODEL": "gpt-4.1-mini",
+  },
   "triggers": {
-    "crons": ["0 * * * *"]
+    "crons": ["0 * * * *"],
   },
   "observability": {
     "enabled": true,
-    "head_sampling_rate": 1
-  }
+    "head_sampling_rate": 1,
+  },
 }
